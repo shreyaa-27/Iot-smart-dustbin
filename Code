@@ -1,0 +1,89 @@
+#include <Servo.h>
+
+Servo servo1;
+const int trigPin = 12;
+const int echoPin = 11;
+const int potPin = A0; // Pin for moisture sensor
+
+long duration;
+int distance = 0;
+int soil = 0;
+int fsoil = 0;
+
+// Threshold values
+int maxDryValue = 50; // Adjust based on moisture sensor calibration
+int Ultra_Distance = 15; // Distance to detect object in cm
+
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  servo1.attach(8); // Servo motor connected to pin 8
+
+  // Set servo to neutral position
+  servo1.write(90);
+  Serial.println("Soil Sensor   Ultrasonic   Servo Motor");
+}
+
+void loop() {
+  distance = measureDistance();
+
+
+  if (distance < Ultra_Distance && distance > 1) {
+    delay(1000);
+
+    fsoil = measureSoilMoisture();
+
+    Serial.print("Humidity: ");
+    Serial.print(fsoil);
+    Serial.print("%   Distance: ");
+
+    Serial.print(distance);
+    Serial.print(" cm");
+
+    if (fsoil > maxDryValue) {
+      Serial.println("   ==> Wet Waste");
+      servo1.write(170); // Move servo to wet side
+      delay(3000);
+    } else {
+
+      Serial.println("   ==> Dry Waste");
+      servo1.write(10); // Move servo to dry side
+      delay(3000);
+    }
+
+    // Return servo to neutral position
+    servo1.write(90);
+  }
+
+  delay(1000); // Wait before next cycle
+}
+
+// Function to measure distance using ultrasonic sensor
+int measureDistance() {
+  long totalDuration = 0;
+  for (int i = 0; i < 2; i++) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    totalDuration += pulseIn(echoPin, HIGH);
+    delay(10);
+  }
+  return (totalDuration / 2) * 0.034 / 2;
+}
+
+// Function to measure soil moisture
+int measureSoilMoisture() {
+  int totalSoil = 0;
+  for (int i = 0; i < 3; i++) {
+    soil = analogRead(potPin);
+    soil = constrain(soil, 485, 1023); // Adjust the lower and upper bounds if needed
+    totalSoil += map(soil, 485, 1023, 100, 0); // Map the sensor values to percentage
+    delay(75);
+  }
+  return totalSoil / 3; // Average moisture value
+}
